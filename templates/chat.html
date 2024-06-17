@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body class="{% if to_user.is_online %}bg-success{% endif %}">
+
+<div class="container py-5">
+    <h2>Welcome {{ request.user.get_full_name }} to chat with {{ to_user.user.get_full_name }} ({{ to_user.id }})</h2>
+    <div class="py-3">
+        <div class="card mb-5">
+            <div class="card-body py-5" id="message_container">
+                {% for message in messages %}
+                    <div class="{% if message.chat_user.user == request.user %} text-end {% elif message.type_message == message.ANNOUNCEMENT %} text-center {% else %} text-start {% endif %} mb-5">
+                        <span class="border p-3 rounded-pill">{{ message.body }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="mb-5">
+            <form name="messageForm">
+                <div class="d-flex gap-4">
+                    <label class="flex-grow-1">
+                        <input type="text" name="message" placeholder="Type message" class="form-control" required>
+                    </label>
+                    <button class="btn btn-primary">Send</button>
+                </div>
+            </form>
+        </div>
+        <div>
+            <form name="readMessageForm">
+                <div class="d-flex gap-4">
+                    <label class="flex-grow-1">
+                        <input type="text" name="messageId" placeholder="Type message id" class="form-control" required>
+                    </label>
+                    <button class="btn btn-primary">Make Read</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{ chat_room.uuid|json_script:'room-uuid' }}
+{{ token|json_script:'token' }}
+{{ request.user.chat_info.id|json_script:'user_id' }}
+{{ to_user.id|json_script:'to_user_id' }}
+
+<script>
+    const roomUUID = JSON.parse(document.getElementById('room-uuid').textContent)
+    const token = JSON.parse(document.getElementById('token').textContent)
+    const userId = JSON.parse(document.getElementById('user_id').textContent)
+    const queries = new URLSearchParams({Authorization: `Token ${token}`}).toString()
+    const ws = new WebSocket(`ws://${window.location.host}/chat-room/${roomUUID}/?${queries}`)
+
+    ws.onmessage = e => {
+        const data = JSON.parse(e.data)
+        console.log(data)
+        switch (data.type) {
+            case 'send_message':
+                if (userId === data['chat_user_id']) {
+                    message_container.innerHTML += `
+                         <div class="text-end mb-5"><span class="border p-3 rounded-pill">${data.body}</span></div>
+                    `
+                } else {
+                    message_container.innerHTML += `
+                         <div class="text-left mb-5"><span class="border p-3 rounded-pill">${data.body}</span></div>
+                    `
+                }
+            case 'typing':
+                if (data['chat_user_id'] == to_user_id) {
+                    if (data['typing']) {
+                        if (!document.querySelector('#typing')){
+                        message_container.innerHTML += `
+                            <div class="text-left mb-5" id="typing"><span class="border p-3 rounded-pill">Typing</span></div>
+                        `}
+                    } else {
+                        document.querySelector('#typing').remove()
+                    }
+
+                }
+
+            default:
+                console.log('Nothing')
+        }
+    }
+
+    ws.onopen = e => {
+        console.log('on open')
+    }
+
+    ws.onclose = e => {
+        console.log('on close')
+    }
+
+    const messageForm = document.forms.messageForm
+
+    const sendMessage = (body) => {
+        console.log('called')
+        ws.send(JSON.stringify({type: 'send_message', body}))
+    }
+
+    messageForm.message.oninput = (e) => {
+        console.log(e.target.value)
+        ws.send(JSON.stringify({type: 'typing', chat_user_id: userId, typing: true}))
+
+    }
+
+    messageForm.message.onchange = (e) => {
+        ws.send(JSON.stringify({type: 'typing', chat_user_id: userId, typing: false}))
+    }
+
+
+    messageForm.onsubmit = e => {
+        e.preventDefault()
+        const message = messageForm.message.value
+        sendMessage(message)
+    }
+
+    const readMessageForm = document.forms.readMessageForm
+
+    const makeReadMessage = (messageId) => {
+        console.log('called')
+        ws.send(JSON.stringify({type: 'make_read_message', 'message_id': messageId}))
+    }
+
+    readMessageForm.onsubmit = e => {
+        e.preventDefault()
+        const messageId = +readMessageForm.messageId.value
+        makeReadMessage(messageId)
+    }
+
+</script>
+
+<script>
+    const to_user_id = JSON.parse(document.getElementById('to_user_id').textContent)
+    const online_user_ws = new WebSocket(`ws://${window.location.host}/online-user/?${queries}`)
+
+    online_user_ws.onmessage = e => {
+        const data = JSON.parse(e.data)
+        console.log(data)
+        if (data['type'] == 'online_user') {
+            if (data['chat_user_id'] == to_user_id) {
+                if (data['is_online']) {
+                    document.body.classList.add('bg-success')
+                } else {
+                    document.body.classList.remove('bg-success')
+                }
+
+            }
+        }
+    }
+
+    online_user_ws.onopen = e => {
+        console.log('on open online user ws')
+    }
+
+    online_user_ws.onclose = e => {
+        console.log('on close online user ws')
+    }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+</body>
+</html>

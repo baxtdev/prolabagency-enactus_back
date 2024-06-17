@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Отправка JSON запроса</title>
+</head>
+<body>
+
+<h1>Отправка JSON запроса</h1>
+
+<title>Форма с несколькими инпутами</title>
+</head>
+<body>
+    <form id="myForm" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="nameModel">Имя модели:</label>
+        <input type="text" id="nameModel" name="item"><br><br>
+
+        <label for="nameModel">Имя модели:</label>
+        <input type="text" id="nameModel" name="name_model"><br><br>
+
+        <label for="quantity">Количество:</label>
+        <input type="number" id="quantity" name="quantity"><br><br>
+
+        <label for="price">Цена:</label>
+        <input type="number" id="price" name="price"><br><br>
+
+        <label for="currency">Валюта:</label>
+        <input type="text" id="currency" name="currency"><br><br>
+
+        <label for="images">Изображения:</label>
+        <input type="file" id="images" name="set_images" multiple><br><br>
+
+        <label for="colors">Цвета (числа через запятую):</label>
+        <input type="text" id="colors" name="set_color"><br><br>
+
+        <button type="button" onclick="submitForm()">Отправить</button>
+    </form>
+
+    <script>
+        function submitForm() {
+            const form = document.getElementById('myForm');
+            const formData = new FormData(form);
+
+
+            fetch('/api/v1/items-models/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Ответ сервера:', data);
+            })
+            .catch(error => {
+                console.error('Ошибка при отправке запроса:', error);
+            });
+        }
+    </script>
+</body>
+</html>

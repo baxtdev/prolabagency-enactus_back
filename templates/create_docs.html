@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Base64 Image Upload</title>
+    <style>
+        body {
+            padding: 1rem;
+        }
+
+        form {
+            width: 50vw;
+            height: fit-content;
+        }
+    </style>
+</head>
+
+<body>
+    <form method="POST" onsubmit="image_to_base64(event)">
+        <label for="title">Title</label>
+        <br>
+        <input type="text" name="title" id="title" placeholder="title">
+        <br>
+        <br>
+        <label for="content">Content</label>
+        <br>
+        <textarea name="content" id="content" placeholder="Content"></textarea>
+        <br>
+        <br>
+        <label for="image">Image</label>
+        <input type="file" name="image" id="image" accept="image/*">
+        <br>
+        <button type="submit">Submit</button>
+    </form>
+
+    <!-- Axios -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"
+        integrity="sha512-uMtXmF28A2Ab/JJO2t/vYhlaa/3ahUOgj1Zf27M5rOo8/+fcTUVH0/E0ll68njmjrLqOBjXM3V9NiPFL5ywWPQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script>
+        function upload_data(image) {
+            event.preventDefault();
+            var title = document.getElementById("title").value
+            var content = document.getElementById("content").value
+            var json_data = {
+                "name": title,
+                "university": "1",
+                "document_file": image
+            }
+            axios.post(
+                    '/api/v1/university-documents/',
+                    json_data, {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        xsrfCookieName: 'csrftoken',
+                        xsrfHeaderName: 'X-CSRFTOKEN'
+                    })
+                .then(function (response) {
+                    console.log(response);
+                })
+                .catch(function (error) {
+                    console.log(error);
+                });
+        }
+
+        function image_to_base64(event) {
+            event.preventDefault();
+            var file = document.getElementById("image").files[0];
+            var reader = new FileReader();
+            reader.onloadend = function () {
+                console.log(reader.result)
+                upload_data(reader.result)
+            }
+            var text = reader.readAsDataURL(file);
+        }
+    </script>
+</body>
+
+</html>
